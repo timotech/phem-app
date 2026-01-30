@@ -18,11 +18,15 @@ const userSchema = new Schema<IUsers>(
     password: { type: String, required: true },
     firstName: String,
     lastName: String,
-    roleId: [{ type: mongoose.Schema.Types.ObjectId, ref: "Role" }],
+    roleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Roles",
+      required: true,
+    },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 const Users: Model<IUsers> =
   mongoose.models.Users || mongoose.model("Users", userSchema);

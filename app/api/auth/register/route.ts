@@ -18,6 +18,7 @@ interface RequestBody {
   password: string;
   firstName?: string;
   lastName?: string;
+  roleId: string;
 }
 
 interface ErrorResponse {
@@ -32,12 +33,18 @@ export async function POST(
   req: Request,
 ): Promise<NextResponse<ErrorResponse | SuccessResponse>> {
   try {
-    const { username, email, password, firstName, lastName }: RequestBody =
-      await req.json();
+    const {
+      username,
+      email,
+      password,
+      firstName,
+      lastName,
+      roleId,
+    }: RequestBody = await req.json();
 
-    if (!username || !email || !password) {
+    if (!username || !email || !password || !roleId) {
       return NextResponse.json(
-        { error: "Username, email, and password are required." },
+        { error: "Username, email, password, and role are required." },
         { status: 400 },
       );
     }
@@ -60,6 +67,7 @@ export async function POST(
       password: hashedPassword,
       ...(firstName && { firstName }), // Only include if provided
       ...(lastName && { lastName }), // Only include if provided
+      roleId,
     });
 
     await newUser.save();

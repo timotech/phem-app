@@ -2,21 +2,31 @@ export const runtime = "nodejs";
 
 import connectMongoDB from "@/app/lib/mongodb";
 import Users from "@/models/users";
+//import Roles from "@/models/roles"; // Import the Roles model
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { Types } from "mongoose";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
-interface UserDocument {
-  _id: string;
-  email: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  password: string;
+// Define the populated role structure
+interface PopulatedRole {
+  _id: Types.ObjectId;
+  rolename: string;
+  description?: string;
 }
+
+// interface UserDocument {
+//   _id: Types.ObjectId;
+//   email: string;
+//   username: string;
+//   firstName: string;
+//   lastName: string;
+//   password: string;
+//   roleId: PopulatedRole | Types.ObjectId; // Can be either populated object or just ObjectId
+// }
 
 interface RequestBody {
   identifier: string;
@@ -28,6 +38,7 @@ interface TokenPayload {
   email: string;
   username: string;
   name: string;
+  role: string; // Store role name as string, not ObjectId
 }
 
 export async function POST(req: Request) {
@@ -48,9 +59,9 @@ export async function POST(req: Request) {
 
     await connectMongoDB();
 
-    const user: UserDocument | null = await Users.findOne({
+    const user = await Users.findOne({
       $or: [{ email: identifier }, { username: identifier }],
-    });
+    }).populate<{ roleId: PopulatedRole }>("roleId", "rolename");
 
     if (!user) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
@@ -64,12 +75,22 @@ export async function POST(req: Request) {
       );
     }
 
+    // Get the role name - check if it's populated or not
+    let roleName = "";
+    if (typeof user.roleId === "object" && "rolename" in user.roleId) {
+      // roleId is populated
+      roleName = (user.roleId as PopulatedRole).rolename;
+    } else {
+      roleName = "Student"; // Default role name or fetch from Roles collection if needed
+    }
+
     const token = jwt.sign(
       {
-        id: user._id,
+        id: user._id.toString(),
         email: user.email,
         username: user.username,
         name: `${user.firstName} ${user.lastName}`,
+        role: roleName,
       } as TokenPayload,
       JWT_SECRET,
       { expiresIn: "7d" },
@@ -84,7 +105,20 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
-    return NextResponse.json({ message: "Login successful." }, { status: 200 });
+    return NextResponse.json(
+      {
+        message: "Login successful.",
+        user: {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          roles: user.roleId,
+        },
+      },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import SearchBar from "./SearchBar";
 import Link from "next/link";
-import { API_URL } from "../lib/config";
+import { API_URL } from "@/app/lib/config";
 
 export default function LowerNav() {
   const [user, setUser] = useState<{ name?: string } | null>(null);
@@ -150,9 +150,15 @@ export default function LowerNav() {
                   onMouseEnter={() => setShowProfileMenu(true)}
                   onMouseLeave={() => setShowProfileMenu(false)}
                 >
-                  <button className="w-10 h-10 rounded-full bg-green-100 text-green-900 font-bold flex items-center justify-center hover:bg-green-200 transition">
-                    TA
-                  </button>
+                  <div className="flex flex-col items-center">
+                    {/* Profile button */}
+                    <button className="w-10 h-10 rounded-full bg-green-100 text-green-900 font-bold flex items-center justify-center hover:bg-green-200 transition">
+                      TA
+                    </button>
+
+                    {/* Invisible bridge to prevent gap */}
+                    <div className="absolute top-10 h-2 w-full bg-transparent" />
+                  </div>
                   {showProfileMenu && (
                     <div className="absolute right-0 top-12 bg-white shadow-lg rounded-lg py-2 w-48 z-50">
                       <a
@@ -176,7 +182,7 @@ export default function LowerNav() {
                       <hr className="my-2" />
                       <button
                         onClick={() => handleLogOut()}
-                        className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800 text-sm"
+                        className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800 text-sm cursor-pointer"
                       >
                         🚪 Logout
                       </button>

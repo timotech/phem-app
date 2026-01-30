@@ -4,15 +4,50 @@ import { useState } from "react";
 //import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { fetcher } from "@/app/lib/fetcher";
 import { API_URL } from "@/app/lib/config";
+import useSWR from "swr";
+
+interface Role {
+  _id: string;
+  rolename: string;
+}
+
+interface UserFormData {
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  firstName: string;
+  lastName: string;
+  roleId: string; // Store as string initially
+}
 
 export default function RegisterPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const [formData, setFormData] = useState<UserFormData>({
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    firstName: "",
+    lastName: "",
+    roleId: "",
+  });
+
+  const { data: roles = [] } = useSWR<Role[]>(`${API_URL}/auth/roles`, fetcher);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>,
@@ -21,28 +56,31 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      if (password !== confirmPassword) {
+      if (formData.password !== formData.confirmPassword) {
         alert("Passwords do not match");
         setLoading(false);
         return;
       }
 
-      if (password.length < 8) {
+      if (formData.password.length < 8) {
         alert("Password must be at least 8 characters long");
         setLoading(false);
         return;
       }
 
+      const studentRole = roles?.find((role) => role.rolename === "Student");
+
+      const userData = {
+        ...formData,
+        email: formData.username.trim(),
+        roleId: studentRole?._id,
+      };
+
+      console.log("Registering user with data:", userData);
+
       const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
-        body: JSON.stringify({
-          username: email,
-          email: email,
-          password,
-          firstName: "",
-          lastName: "",
-          roleId: "6977679de2a99ff8ff213bbc",
-        }),
+        body: JSON.stringify(userData),
         headers: { "Content-Type": "application/json" },
       });
       const data = await res.json();
@@ -80,8 +118,10 @@ export default function RegisterPage() {
             </label>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="you@example.com"
               required
@@ -94,8 +134,10 @@ export default function RegisterPage() {
             </label>
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="••••••••"
               required
@@ -107,11 +149,45 @@ export default function RegisterPage() {
               Confirm Password
             </label>
             <input
+              value={formData.confirmPassword}
+              onChange={handleChange}
               type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              id="confirmPassword"
+              name="confirmPassword"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="••••••••"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="firstName" className="block mb-2">
+              First Name
+            </label>
+            <input
+              type="text"
+              id="firstName"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              placeholder="Enter first name"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="lastName" className="block mb-2">
+              Last Name
+            </label>
+            <input
+              type="text"
+              id="lastName"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              placeholder="Enter last name"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               required
             />
           </div>
@@ -119,7 +195,10 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50 cursor-pointer"
+            className={
+              "w-full bg-green-600 text-white py-2 rounded-lg font-semibold " +
+              "hover:bg-green-700 transition disabled:opacity-50 cursor-pointer"
+            }
           >
             {loading ? "Signing Up..." : "Sign Up"}
           </button>

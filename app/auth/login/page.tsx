@@ -36,7 +36,13 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok) {
-        router.push("/home/mycourses");
+        const roleName = data.user.roles.rolename;
+
+        if (roleName === "Administrator") {
+          router.push("/dashboard");
+        } else {
+          router.push("/home/mycourses");
+        }
       } else {
         setLoading(false);
         setError(data.error as string);

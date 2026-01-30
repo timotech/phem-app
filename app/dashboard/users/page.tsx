@@ -18,21 +18,29 @@ interface Role {
   rolename: string;
 }
 
+interface UserFormData {
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  firstName: string;
+  lastName: string;
+  roleId: string; // Store as string initially
+}
+
 export default function Page() {
-  const [username, setUsername] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [confirmPassword, setConfirmPassword] = useState<string>("");
-  const [firstName, setFirstName] = useState<string>("");
-  const [lastName, setLastName] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
-  //const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [roleId, setRoleId] = useState<string | null>(null);
-  //const [roles, setRoles] = useState<Array<{ _id: string; rolename: string }>>(
-  //  []
-  //);
-  //const [users, setUsers] = useState<Array<{ _id: string; username: string }>>(
-  //  []
-  //);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [formData, setFormData] = useState<UserFormData>({
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    firstName: "",
+    lastName: "",
+    roleId: "",
+  });
 
   const {
     data: roles = [],
@@ -55,44 +63,64 @@ export default function Page() {
     return <p className="text-sm text-red-500">Failed to load data</p>;
   }
 
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     e.preventDefault();
     setFormError(null);
+    setIsLoading(true);
     try {
-      if (password !== confirmPassword) {
+      if (formData.password !== formData.confirmPassword) {
         setFormError("Passwords do not match");
         return;
       }
 
-      const body = {
-        username,
-        email: username,
-        password,
-        firstName,
-        lastName,
-        roleId,
+      if (!formData.roleId) {
+        alert("Please select a role");
+        setIsLoading(false);
+        return;
+      }
+
+      const userData = {
+        ...formData,
+        email: formData.username.trim(),
+        // roleId is already a string from the form
       };
 
       const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
-        body: JSON.stringify(body),
+        body: JSON.stringify(userData),
         headers: { "Content-Type": "application/json" },
       });
       const data = await res.json();
       if (res.ok) {
-        setUsername("");
-        setPassword("");
-        setConfirmPassword("");
-        setFirstName("");
-        setLastName("");
-        setRoleId(null);
+        setFormData({
+          username: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          firstName: "",
+          lastName: "",
+          roleId: "",
+        });
         mutateUsers(); // Refresh the users list
+        setIsLoading(false);
       } else {
         setFormError(data.error as string);
+        setIsLoading(false);
       }
     } catch (err) {
+      setIsLoading(false);
       setFormError(
         "Error adding user: " +
           (err instanceof Error ? err.message : String(err)),
@@ -125,10 +153,11 @@ export default function Page() {
                 Email
               </label>
               <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
                 type="email"
                 id="username"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
                 placeholder="Enter your email"
                 className="w-full border border-gray-400 p-3 bg-white rounded-lg text-gray-800"
                 required
@@ -140,10 +169,11 @@ export default function Page() {
                 Password
               </label>
               <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 type="password"
                 id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
                 placeholder="Enter your password"
                 className="w-full border border-gray-400 p-3 bg-white rounded-lg text-gray-800"
                 required
@@ -155,10 +185,11 @@ export default function Page() {
                 Confirm Password
               </label>
               <input
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={formData.confirmPassword}
+                onChange={handleChange}
                 type="password"
-                id="password"
+                id="confirmPassword"
+                name="confirmPassword"
                 placeholder="Enter your password again"
                 className="w-full border border-gray-400 p-3 bg-white rounded-lg text-gray-800"
                 required
@@ -170,10 +201,11 @@ export default function Page() {
                 First Name
               </label>
               <input
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
                 type="text"
                 id="firstName"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
                 placeholder="Enter first name"
                 className="w-full border border-gray-400 p-3 bg-white rounded-lg text-gray-800"
                 required
@@ -185,10 +217,11 @@ export default function Page() {
                 Last Name
               </label>
               <input
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
                 type="text"
                 id="lastName"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
                 placeholder="Enter last name"
                 className="w-full border border-gray-400 p-3 bg-white rounded-lg text-gray-800"
                 required
@@ -200,30 +233,34 @@ export default function Page() {
                 Role Access
               </label>
               <select
+                id="roleId"
+                name="roleId"
+                value={formData.roleId}
+                onChange={handleChange}
                 className="w-full border border-gray-400 p-3 bg-white rounded-lg text-gray-800"
+                required
                 disabled={roles.length === 0}
-                value={roleId || ""}
-                onChange={(e) =>
-                  setRoleId(e.target.value ? e.target.value : null)
-                }
               >
-                <option>Select Role...</option>
+                <option value="">Select Role...</option>
                 {roles.map((role) => (
                   <option key={role._id} value={role._id}>
                     {role.rolename}
                   </option>
                 ))}
               </select>
+              {roles.length === 0 && (
+                <p className="text-sm text-red-500 mt-1">Loading roles...</p>
+              )}
             </div>
 
             <button
               type="submit"
               className="w-full p-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition cursor-pointer"
             >
-              {usersLoading ? "Adding User..." : "Add User"}
+              {isLoading ? "Adding User..." : "Add User"}
             </button>
 
-            {usersLoading && <div className="loader mt-3"></div>}
+            {isLoading && <div className="loader mt-3"></div>}
           </form>
         </div>
 
